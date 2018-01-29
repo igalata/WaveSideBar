@@ -1,20 +1,47 @@
 package com.igalata.wavesidebar
 
+import android.animation.Animator
+import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.support.annotation.ColorRes
+import android.support.annotation.DimenRes
 import android.support.v4.content.ContextCompat
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.MotionEvent.*
+import android.view.View
+import android.view.ViewAnimationUtils
+import android.view.animation.BounceInterpolator
 import android.widget.FrameLayout
 import dpToPx
+import isClick
+import isPulled
+import isPulledBack
+import java.lang.Math.max
 
 /**
  * Created by irinagalata on 1/26/18.
  */
 class WaveSideBar : FrameLayout {
+
+    var expandAnimationDuration = 800L
+    var collapseAnimationDuration = 700L
+
+    var view: View? = null
+        set(value) {
+            field = value
+            addView(value)
+            value?.visibility = View.GONE
+        }
+
+    @ColorRes
+    var backgroundColorRes: Int = android.R.color.white
+
+    @DimenRes
+    var sideBarWidthRes: Int = R.dimen.side_bar_width
 
     private var isExpanded = false
 
@@ -24,10 +51,16 @@ class WaveSideBar : FrameLayout {
     private var currentX = 0f
     private var currentY = 0f
 
-    private var previousActionType = 0
+    private var controlX = 0f
+
+    private var zeroX = 0f
+    private var invertedFraction = 1f
 
     private val offset by lazy { dpToPx(R.dimen.offset) }
     private val pullOffset by lazy { dpToPx(R.dimen.pull_offset) }
+
+    private val sideBarWidth: Float
+        get() = dpToPx(sideBarWidthRes)
 
     private var paint: Paint? = null
     private var path: Path? = null
@@ -38,40 +71,54 @@ class WaveSideBar : FrameLayout {
         setWillNotDraw(false)
 
         paint = Paint().apply {
-            color = ContextCompat.getColor(context, android.R.color.white)
+            color = ContextCompat.getColor(context, backgroundColorRes)
             style = Paint.Style.FILL
         }
         path = Path()
     }
 
     override fun onDraw(canvas: Canvas?) {
-
-        if (previousActionType == ACTION_DOWN || isExpanded) return
         path?.reset()
 
-        drawBezierCurve()
+        if (isExpanded) {
+            drawQuadBezierCurve()
+        } else {
+            drawCubicBezierCurve()
+        }
         canvas?.drawPath(path, paint)
     }
 
-    private fun drawBezierCurve() {
+    private fun drawCubicBezierCurve() {
         path?.moveTo(0f, 0f)
         path?.lineTo(0f, height.toFloat())
+        path?.lineTo(zeroX, height.toFloat())
         path?.cubicTo(
-                0f, currentY + 2 * offset,
-                currentX, currentY + 2 * offset,
-                currentX, currentY)
+                zeroX, currentY + 3 * offset,
+                zeroX + currentX * invertedFraction, currentY + 3 * offset,
+                zeroX + currentX * invertedFraction, currentY)
         path?.cubicTo(
-                currentX, currentY - 2 * offset,
-                0f, currentY - 2 * offset,
-                0f, 0f)
+                zeroX + currentX * invertedFraction, currentY - 3 * offset,
+                zeroX, currentY - 3 * offset,
+                zeroX, 0f)
+        path?.lineTo(0f, 0f)
+    }
+
+    private fun drawQuadBezierCurve() {
+        path?.moveTo(0f, 0f)
+        path?.lineTo(0f, height.toFloat())
+        path?.lineTo(zeroX, height.toFloat())
+        path?.quadTo(controlX, height / 2f, zeroX, 0f)
+        path?.lineTo(0f, 0f)
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
-        return event.x < offset || isExpanded || super.onInterceptTouchEvent(event)
+        val touchOutside = isExpanded && event.x > sideBarWidth
+        val touchEdge = event.x < offset
+
+        return touchEdge || touchOutside || super.onInterceptTouchEvent(event)
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-
         currentX = event.x
         currentY = event.y
 
@@ -86,17 +133,20 @@ class WaveSideBar : FrameLayout {
             }
             ACTION_MOVE -> {
                 invalidateNeeded = startX != currentX
+                controlX = max(currentX, sideBarWidth - offset)
             }
             ACTION_UP -> {
-                if (!event.isClick()) {
-                    isExpanded = (isExpanded && !event.isPulledBack()) || event.isPulled()
-                    if (isExpanded && event.isPulled()) {
-                        // todo expand!
+                if (!event.isClick(startX, startY)) {
+                    if (!isExpanded && event.isPulled(startX, pullOffset)) {
+                        startExpandAnimation()
+                    } else if (event.isPulledBack(startX, pullOffset)) {
+                        animateCollapsing()
                     } else {
-                        currentX = 0f
-                        currentY = 0f
+                        animateTension()
                     }
                     invalidateNeeded = true
+                } else if (isExpanded) {
+                    animateCollapsing()
                 }
             }
         }
@@ -104,19 +154,102 @@ class WaveSideBar : FrameLayout {
         if (invalidateNeeded) {
             invalidate(0, 0, currentX.toInt(), height)
         }
-        previousActionType = event.action
         return true
     }
 
-    private fun MotionEvent.isClick(): Boolean {
-        return Math.abs(this.x - startX) < 10 && Math.abs(this.y - startY) < 10
+    private fun startExpandAnimation() {
+        ValueAnimator.ofFloat(0f, sideBarWidth).apply {
+            duration = expandAnimationDuration / 2
+            addUpdateListener {
+                zeroX = animatedValue as Float
+                invertedFraction = 1 - animatedFraction
+                invalidate(0, 0, sideBarWidth.toInt(), height)
+            }
+            addListener(object : OnAnimationFinishedListener {
+                override fun onAnimationEnd(animation: Animator?) {
+                    finishExpandAnimation()
+                    isExpanded = true
+                }
+            })
+        }.start()
+        showContent()
     }
 
-    private fun MotionEvent.isPulled(): Boolean {
-        return this.x - startX > pullOffset
+    private fun finishExpandAnimation() {
+        ValueAnimator.ofFloat(currentX, sideBarWidth).apply {
+            duration = expandAnimationDuration / 2 + 200
+            interpolator = SpringInterpolator()
+            addUpdateListener {
+                controlX = animatedValue as Float
+                invalidate(0, 0, sideBarWidth.toInt(), height)
+            }
+        }.start()
     }
 
-    private fun MotionEvent.isPulledBack(): Boolean {
-        return startX - this.x > pullOffset
+    private fun showContent() {
+        ViewAnimationUtils.createCircularReveal(
+                view, 0, height / 2, 0f, height.toFloat())
+                .apply {
+                    duration = expandAnimationDuration
+                    view?.visibility = View.VISIBLE
+                }.start()
     }
+
+    private fun animateCollapsing() {
+        hideContent()
+        ValueAnimator.ofFloat(sideBarWidth, 0f).apply {
+            duration = collapseAnimationDuration
+            addUpdateListener {
+                zeroX = animatedValue as Float
+            }
+        }.start()
+        ValueAnimator.ofFloat(sideBarWidth, 0f).apply {
+            duration = collapseAnimationDuration + 100
+            interpolator = BounceInterpolator()
+            addUpdateListener {
+                controlX = animatedValue as Float
+                invalidate(0, 0, sideBarWidth.toInt(), height)
+            }
+            addListener(object : OnAnimationFinishedListener {
+                override fun onAnimationEnd(animation: Animator?) {
+                    isExpanded = false
+                    clearData()
+                }
+            })
+        }.start()
+    }
+
+    private fun animateTension() {
+        ValueAnimator.ofFloat(controlX, sideBarWidth).apply {
+            duration = collapseAnimationDuration / 2
+            interpolator = SpringInterpolator()
+            addUpdateListener {
+                controlX = animatedValue as Float
+                invalidate(0, 0, sideBarWidth.toInt(), height)
+            }
+        }.start()
+    }
+
+    private fun hideContent() {
+        ViewAnimationUtils.createCircularReveal(
+                view, 0, height / 2, height.toFloat(), 0f)
+                .apply {
+                    duration = collapseAnimationDuration / 4
+                    view?.visibility = View.VISIBLE
+                    addListener(object : OnAnimationFinishedListener {
+                        override fun onAnimationEnd(animation: Animator?) {
+                            view?.visibility = View.GONE
+                        }
+                    })
+                }.start()
+    }
+
+    private fun clearData() {
+        zeroX = 0f
+        invertedFraction = 1f
+        controlX = 0f
+        currentX = 0f
+        currentY = 0f
+    }
+
 }
