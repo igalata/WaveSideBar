@@ -4,13 +4,12 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?android:attr/selectableItemBackground"
-    android:padding="16dp">
+    android:background="?android:attr/selectableItemBackground">
 
-    <de.hdodenhof.circleimageview.CircleImageView
+    <ImageView
         android:id="@+id/avatar"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
         android:layout_centerVertical="true"
         app:srcCompat="@mipmap/ic_launcher" />
 
@@ -21,9 +20,8 @@
         android:layout_alignTop="@+id/avatar"
         android:layout_toRightOf="@+id/avatar"
         android:padding="8dp"
-        android:textColor="@color/textColor"
+        android:textColor="@android:color/black"
         android:textSize="14sp"
-        android:textStyle="bold"
         tools:text="Name Last name" />
 
     <TextView
@@ -32,8 +30,14 @@
         android:layout_height="wrap_content"
         android:layout_below="@+id/textName"
         android:layout_toRightOf="@+id/avatar"
-        android:paddingLeft="8dp"
-        android:textColor="@color/textColor"
+        android:padding="8dp"
+        android:textColor="@android:color/black"
         android:textSize="12sp"
         tools:text="City" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:layout_below="@+id/avatar"
+        android:background="@color/colorGrey" />
 </RelativeLayout>

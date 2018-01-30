@@ -11,7 +11,22 @@ import kotlinx.android.synthetic.main.content.view.*
 
 class MainActivity : AppCompatActivity() {
 
-    private var adapter = FriendsAdapter()
+    private var adapter = FriendsAdapter(false)
+
+    private val friends = arrayListOf(
+            User("Alyssa Vincent", "https://randomuser.me/api/portraits/women/82.jpg", "Pully"),
+            User("Elya Bonnet", "http://www.fakepersongenerator.com/Face/female/female20151024016299896.jpg", "Echichens"),
+            User("Anita Allen", "https://randomuser.me/api/portraits/women/19.jpg", "Warragul"),
+            User("Jovito Da Mata", "http://www.fakepersongenerator.com/Face/male/male1084956637451.jpg", "Palhoça"),
+            User("Soren Marie", "http://www.fakepersongenerator.com/Face/male/male1085571348236.jpg", "Montpreveyres"),
+            User("Karen Berry", "http://www.fakepersongenerator.com/Face/female/female1021469382050.jpg", "Edinburgh"),
+            User("Alyssa Vincent", "https://randomuser.me/api/portraits/women/82.jpg", "Pully"),
+            User("Elya Bonnet", "http://www.fakepersongenerator.com/Face/female/female20151024016299896.jpg", "Echichens"),
+            User("Anita Allen", "https://randomuser.me/api/portraits/women/19.jpg", "Warragul"),
+            User("Jovito Da Mata", "http://www.fakepersongenerator.com/Face/male/male1084956637451.jpg", "Palhoça"),
+            User("Soren Marie", "http://www.fakepersongenerator.com/Face/male/male1085571348236.jpg", "Montpreveyres"),
+            User("Karen Berry", "http://www.fakepersongenerator.com/Face/female/female1021469382050.jpg", "Edinburgh")
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,6 +36,7 @@ class MainActivity : AppCompatActivity() {
             recyclerView.adapter = adapter
             adapter.friends = getFriends("")
             recyclerView.layoutManager = LinearLayoutManager(this@MainActivity)
+
             editText.addTextChangedListener(object : TextWatcher {
                 override fun afterTextChanged(s: Editable?) {
                     adapter.friends = getFriends(s?.toString() ?: "")
@@ -31,31 +47,13 @@ class MainActivity : AppCompatActivity() {
 
             })
         }
+        sideBar.backgroundColorRes = R.color.backgroundColor
 
-        /*  friendsList.adapter = FriendsAdapter().apply {
-              friends = getFriends("")
-          }
-          friendsList.layoutManager = LinearLayoutManager(this)*/
+        friendsList.layoutManager = LinearLayoutManager(this)
+        friendsList.adapter = FriendsAdapter(true).apply {
+            friends = getFriends("")
+        }
     }
 
-    private fun getFriends(query: String): List<User> {
-        val friends = arrayListOf(
-                User("Alyssa Vincent", "https://randomuser.me/api/portraits/women/82.jpg", "Pully", true),
-                User("Elya Bonnet", "https://randomuser.me/api/portraits/women/84.jpg", "Echichens", false),
-                User("Anita Allen", "https://randomuser.me/api/portraits/women/19.jpg", "Warragul", true),
-                User("Jovito Da Mata", "https://randomuser.me/api/portraits/men/14.jpg", "Palhoça", true),
-                User("Soren Marie", "https://randomuser.me/api/portraits/men/12.jpg", "Montpreveyres", false),
-                User("Karen Berry", "https://randomuser.me/api/portraits/women/6.jpg", "Edinburgh", true),
-                User("Alyssa Vincent", "https://randomuser.me/api/portraits/women/82.jpg", "Pully", false),
-                User("Elya Bonnet", "https://randomuser.me/api/portraits/women/84.jpg", "Echichens", true),
-                User("Anita Allen", "https://randomuser.me/api/portraits/women/19.jpg", "Warragul", false),
-                User("Jovito Da Mata", "https://randomuser.me/api/portraits/men/14.jpg", "Palhoça", true),
-                User("Soren Marie", "https://randomuser.me/api/portraits/men/12.jpg", "Montpreveyres", true),
-                User("Karen Berry", "https://randomuser.me/api/portraits/women/6.jpg", "Edinburgh", false)
-        )
-
-        return friends.filter { it.name.startsWith(query, true) }
-    }
-
-    class User(val name: String, val avatar: String, val city: String, val online: Boolean)
+    private fun getFriends(query: String) = friends.filter { it.name.contains(query, true) }
 }

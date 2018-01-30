@@ -4,7 +4,6 @@ import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
-import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.support.annotation.ColorRes
@@ -39,13 +38,12 @@ class WaveSideBar : FrameLayout {
         }
 
     @ColorRes
-    var backgroundColorRes: Int = android.R.color.white
+    var backgroundColorRes = android.R.color.white
 
     @DimenRes
-    var sideBarWidthRes: Int = R.dimen.side_bar_width
+    var sideBarWidthRes = R.dimen.side_bar_width
 
     private var isExpanded = false
-    private var animationFinished = false
 
     private var startX = 0f
     private var startY = 0f
@@ -65,10 +63,9 @@ class WaveSideBar : FrameLayout {
         get() = dpToPx(sideBarWidthRes)
 
     private var paint: Paint? = null
-    private var shadowPaint: Paint? = null
+    private var overlayPaint: Paint? = null
     private var path: Path? = null
-    private var shadowPath: Path? = null
-    private var gradient: LinearGradient? = null
+    private var overlayPath: Path? = null
 
     constructor(context: Context?) : this(context, null)
     constructor(context: Context?, attrs: AttributeSet?) : this(context, attrs, 0)
@@ -80,68 +77,74 @@ class WaveSideBar : FrameLayout {
             style = Paint.Style.FILL
             flags = Paint.ANTI_ALIAS_FLAG
         }
-        /*shadowPaint = Paint().apply {
+        overlayPaint = Paint().apply {
             color = ContextCompat.getColor(context, R.color.grey)
             style = Paint.Style.FILL
-        }*/
-        /* gradient = LinearGradient(sideBarWidth, 0f, sideBarWidth + 10, 0f,
-                 ContextCompat.getColor(context, R.color.grey),
-                 ContextCompat.getColor(context, android.R.color.transparent),
-                 android.graphics.Shader.TileMode.CLAMP)*/
+        }
         path = Path()
-        //shadowPath = Path()
+        overlayPath = Path()
     }
 
     override fun onDraw(canvas: Canvas?) {
-        path?.reset()
-        shadowPath?.reset()
+        reset()
+        drawOverlay(canvas)
 
         if (isExpanded) {
-            drawQuadBezierCurve()
+            drawQuadBezierCurve(canvas)
         } else {
-            drawCubicBezierCurve()
+            drawCubicBezierCurve(canvas)
         }
+    }
 
+    private fun reset() {
+        path?.reset()
+        overlayPath?.reset()
+    }
+
+    private fun drawOverlay(canvas: Canvas?) {
+        updateOverlay()
+        overlayPath?.let {
+            it.moveTo(0f, 0f)
+            it.lineTo(0f, height.toFloat())
+            it.lineTo(width.toFloat(), height.toFloat())
+            it.lineTo(width.toFloat(), 0f)
+            it.lineTo(0f, 0f)
+        }
+        canvas?.drawPath(overlayPath, overlayPaint)
+    }
+
+    private fun drawCubicBezierCurve(canvas: Canvas?) {
+        path?.let {
+            it.moveTo(0f, 0f)
+            it.lineTo(0f, height.toFloat())
+            it.lineTo(zeroX, height.toFloat())
+            it.cubicTo(
+                    zeroX, currentY + 3 * offset,
+                    zeroX + currentX * invertedFraction, currentY + 3 * offset,
+                    zeroX + currentX * invertedFraction, currentY)
+            it.cubicTo(
+                    zeroX + currentX * invertedFraction, currentY - 3 * offset,
+                    zeroX, currentY - 3 * offset,
+                    zeroX, 0f)
+            it.lineTo(0f, 0f)
+        }
         canvas?.drawPath(path, paint)
     }
 
-    /* private fun drawShadow() {
-         shadowPaint?.shader = gradient
-         shadowPaint?.isDither = true
-
-         shadowPath?.moveTo(zeroX, height.toFloat())
-         shadowPath?.quadTo(controlX, height / 2f, zeroX, 0f)
-         shadowPath?.lineTo(zeroX + 10, 0f)
-         shadowPath?.quadTo(controlX + 10, height / 2f, zeroX + 10, height.toFloat())
-         shadowPath?.lineTo(zeroX, height.toFloat())
-     }
- */
-    private fun drawCubicBezierCurve() {
-        path?.moveTo(0f, 0f)
-        path?.lineTo(0f, height.toFloat())
-        path?.lineTo(zeroX, height.toFloat())
-        path?.cubicTo(
-                zeroX, currentY + 3 * offset,
-                zeroX + currentX * invertedFraction, currentY + 3 * offset,
-                zeroX + currentX * invertedFraction, currentY)
-        path?.cubicTo(
-                zeroX + currentX * invertedFraction, currentY - 3 * offset,
-                zeroX, currentY - 3 * offset,
-                zeroX, 0f)
-        path?.lineTo(0f, 0f)
-    }
-
-    private fun drawQuadBezierCurve() {
-        path?.moveTo(0f, 0f)
-        path?.lineTo(0f, height.toFloat())
-        path?.lineTo(zeroX, height.toFloat())
-        path?.quadTo(controlX, height / 2f, zeroX, 0f)
-        path?.lineTo(0f, 0f)
+    private fun drawQuadBezierCurve(canvas: Canvas?) {
+        path?.let {
+            it.moveTo(0f, 0f)
+            it.lineTo(0f, height.toFloat())
+            it.lineTo(zeroX, height.toFloat())
+            it.quadTo(controlX, height / 2f, zeroX, 0f)
+            it.lineTo(0f, 0f)
+        }
+        canvas?.drawPath(path, paint)
     }
 
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
         val touchOutside = isExpanded && event.x > sideBarWidth
-        val touchEdge = event.x < offset
+        val touchEdge = event.x < offset && !isExpanded
 
         return touchEdge || touchOutside || super.onInterceptTouchEvent(event)
     }
@@ -180,7 +183,7 @@ class WaveSideBar : FrameLayout {
         }
 
         if (invalidateNeeded) {
-            invalidate(0, 0, currentX.toInt(), height)
+            invalidate()
         }
         return true
     }
@@ -191,7 +194,7 @@ class WaveSideBar : FrameLayout {
             addUpdateListener {
                 zeroX = animatedValue as Float
                 invertedFraction = 1 - animatedFraction
-                invalidate(0, 0, sideBarWidth.toInt(), height)
+                invalidate()
             }
             addListener(object : OnAnimationFinishedListener {
                 override fun onAnimationEnd(animation: Animator?) {
@@ -203,19 +206,21 @@ class WaveSideBar : FrameLayout {
         showContent()
     }
 
+    private fun updateOverlay() {
+        overlayPaint?.reset()
+        overlayPaint?.color = ContextCompat.getColor(context, R.color.grey)
+        overlayPaint?.alpha = Math.min(((currentX / width) * 255).toInt(), 80)
+        overlayPaint?.style = Paint.Style.FILL
+    }
+
     private fun finishExpandAnimation() {
         ValueAnimator.ofFloat(currentX, sideBarWidth).apply {
             duration = expandAnimationDuration / 2 + 200
             interpolator = SpringInterpolator()
             addUpdateListener {
                 controlX = animatedValue as Float
-                invalidate(0, 0, sideBarWidth.toInt(), height)
+                invalidate()
             }
-            addListener(object : OnAnimationFinishedListener {
-                override fun onAnimationEnd(animation: Animator?) {
-                    animationFinished = true
-                }
-            })
         }.start()
     }
 
@@ -229,7 +234,6 @@ class WaveSideBar : FrameLayout {
     }
 
     private fun animateCollapsing() {
-        animationFinished = false
         hideContent()
         ValueAnimator.ofFloat(sideBarWidth, 0f).apply {
             duration = collapseAnimationDuration
@@ -242,7 +246,7 @@ class WaveSideBar : FrameLayout {
             interpolator = BounceInterpolator()
             addUpdateListener {
                 controlX = animatedValue as Float
-                invalidate(0, 0, sideBarWidth.toInt(), height)
+                invalidate()
             }
             addListener(object : OnAnimationFinishedListener {
                 override fun onAnimationEnd(animation: Animator?) {
@@ -259,7 +263,7 @@ class WaveSideBar : FrameLayout {
             interpolator = SpringInterpolator()
             addUpdateListener {
                 controlX = animatedValue as Float
-                invalidate(0, 0, sideBarWidth.toInt(), height)
+                invalidate()
             }
         }.start()
     }

@@ -4,5 +4,6 @@
     <dimen name="offset">30dp</dimen>
     <dimen name="pull_offset">60dp</dimen>
     <dimen name="side_bar_width">300dp</dimen>
+    <dimen name="shadow_width">4dp</dimen>
 
 </resources>
