@@ -78,6 +78,7 @@ class WaveSideBar : FrameLayout {
         paint = Paint().apply {
             color = ContextCompat.getColor(context, backgroundColorRes)
             style = Paint.Style.FILL
+            flags = Paint.ANTI_ALIAS_FLAG
         }
         /*shadowPaint = Paint().apply {
             color = ContextCompat.getColor(context, R.color.grey)
