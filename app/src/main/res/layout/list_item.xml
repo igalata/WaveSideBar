@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?android:attr/selectableItemBackground"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:paddingTop="16dp">
+
+    <ImageView
+        android:id="@+id/avatar"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_centerVertical="true"
+        app:srcCompat="@mipmap/ic_launcher" />
+
+    <View
+        android:id="@+id/marker"
+        android:layout_width="8dp"
+        android:layout_height="60dp"
+        android:layout_alignTop="@+id/avatar"
+        android:layout_toRightOf="@+id/avatar" />
+
+    <TextView
+        android:id="@+id/textName"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/marker"
+        android:layout_toRightOf="@+id/marker"
+        android:padding="8dp"
+        android:textColor="@android:color/black"
+        android:textSize="14sp"
+        tools:text="Name Last name" />
+
+    <TextView
+        android:id="@+id/textCity"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/marker"
+        android:layout_toRightOf="@+id/marker"
+        android:padding="8dp"
+        android:textColor="@android:color/black"
+        android:textSize="12sp"
+        tools:text="City" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:layout_below="@+id/avatar"
+        android:layout_marginTop="16dp"
+        android:background="@color/colorGrey" />
+</RelativeLayout>

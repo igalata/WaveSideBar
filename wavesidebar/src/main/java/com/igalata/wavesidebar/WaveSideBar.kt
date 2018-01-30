@@ -4,6 +4,7 @@ import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.support.annotation.ColorRes
@@ -44,6 +45,7 @@ class WaveSideBar : FrameLayout {
     var sideBarWidthRes: Int = R.dimen.side_bar_width
 
     private var isExpanded = false
+    private var animationFinished = false
 
     private var startX = 0f
     private var startY = 0f
@@ -63,7 +65,10 @@ class WaveSideBar : FrameLayout {
         get() = dpToPx(sideBarWidthRes)
 
     private var paint: Paint? = null
+    private var shadowPaint: Paint? = null
     private var path: Path? = null
+    private var shadowPath: Path? = null
+    private var gradient: LinearGradient? = null
 
     constructor(context: Context?) : this(context, null)
     constructor(context: Context?, attrs: AttributeSet?) : this(context, attrs, 0)
@@ -74,20 +79,42 @@ class WaveSideBar : FrameLayout {
             color = ContextCompat.getColor(context, backgroundColorRes)
             style = Paint.Style.FILL
         }
+        /*shadowPaint = Paint().apply {
+            color = ContextCompat.getColor(context, R.color.grey)
+            style = Paint.Style.FILL
+        }*/
+        /* gradient = LinearGradient(sideBarWidth, 0f, sideBarWidth + 10, 0f,
+                 ContextCompat.getColor(context, R.color.grey),
+                 ContextCompat.getColor(context, android.R.color.transparent),
+                 android.graphics.Shader.TileMode.CLAMP)*/
         path = Path()
+        //shadowPath = Path()
     }
 
     override fun onDraw(canvas: Canvas?) {
         path?.reset()
+        shadowPath?.reset()
 
         if (isExpanded) {
             drawQuadBezierCurve()
         } else {
             drawCubicBezierCurve()
         }
+
         canvas?.drawPath(path, paint)
     }
 
+    /* private fun drawShadow() {
+         shadowPaint?.shader = gradient
+         shadowPaint?.isDither = true
+
+         shadowPath?.moveTo(zeroX, height.toFloat())
+         shadowPath?.quadTo(controlX, height / 2f, zeroX, 0f)
+         shadowPath?.lineTo(zeroX + 10, 0f)
+         shadowPath?.quadTo(controlX + 10, height / 2f, zeroX + 10, height.toFloat())
+         shadowPath?.lineTo(zeroX, height.toFloat())
+     }
+ */
     private fun drawCubicBezierCurve() {
         path?.moveTo(0f, 0f)
         path?.lineTo(0f, height.toFloat())
@@ -183,6 +210,11 @@ class WaveSideBar : FrameLayout {
                 controlX = animatedValue as Float
                 invalidate(0, 0, sideBarWidth.toInt(), height)
             }
+            addListener(object : OnAnimationFinishedListener {
+                override fun onAnimationEnd(animation: Animator?) {
+                    animationFinished = true
+                }
+            })
         }.start()
     }
 
@@ -196,6 +228,7 @@ class WaveSideBar : FrameLayout {
     }
 
     private fun animateCollapsing() {
+        animationFinished = false
         hideContent()
         ValueAnimator.ofFloat(sideBarWidth, 0f).apply {
             duration = collapseAnimationDuration
