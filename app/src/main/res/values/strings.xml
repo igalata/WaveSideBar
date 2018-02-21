@@ -1,3 +1,18 @@
 <resources>
-    <string name="app_name">WaveSideBarDemo</string>
+    <string name="app_name">Store</string>
+
+    <string-array name="titles">
+        <item>Blue roses</item>
+        <item>Yellow roses</item>
+        <item>Red roses</item>
+        <item>Black roses</item>
+        <item>Violet roses</item>
+        <item>Pink roses</item>
+    </string-array>
+
+    <string name="shop">Shop</string>
+    <string name="promos">Promos</string>
+    <string name="orders">My orders</string>
+    <string name="account">My account</string>
+    <string name="about">About</string>
 </resources>

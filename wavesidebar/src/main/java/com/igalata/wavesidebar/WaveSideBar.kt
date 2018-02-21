@@ -3,9 +3,7 @@ package com.igalata.wavesidebar
 import android.animation.Animator
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Path
+import android.graphics.*
 import android.support.annotation.ColorRes
 import android.support.annotation.DimenRes
 import android.support.v4.content.ContextCompat
@@ -35,15 +33,22 @@ class WaveSideBar : FrameLayout {
             field = value
             addView(value)
             value?.visibility = View.GONE
+            init()
         }
 
     @ColorRes
-    var backgroundColorRes = android.R.color.white
+    var startColorRes = android.R.color.white
+        get() = ContextCompat.getColor(context, field)
+
+    @ColorRes
+    var endColorRes = android.R.color.white
+        get() = ContextCompat.getColor(context, field)
 
     @DimenRes
     var sideBarWidthRes = R.dimen.side_bar_width
 
     private var isExpanded = false
+    private var isBusy = false
 
     private var startX = 0f
     private var startY = 0f
@@ -56,26 +61,32 @@ class WaveSideBar : FrameLayout {
     private var zeroX = 0f
     private var invertedFraction = 1f
 
+    private val smallOffset by lazy { dpToPx(R.dimen.small_offset) }
     private val offset by lazy { dpToPx(R.dimen.offset) }
     private val pullOffset by lazy { dpToPx(R.dimen.pull_offset) }
 
     private val sideBarWidth: Float
-        get() = dpToPx(sideBarWidthRes)
+        get() = dpToPx(sideBarWidthRes) + smallOffset
 
     private var paint: Paint? = null
     private var overlayPaint: Paint? = null
     private var path: Path? = null
     private var overlayPath: Path? = null
 
+    private val gradient: LinearGradient
+        get() = LinearGradient(600f, 0f, 0f, 1500f, startColorRes,
+                endColorRes, Shader.TileMode.CLAMP)
+
     constructor(context: Context?) : this(context, null)
     constructor(context: Context?, attrs: AttributeSet?) : this(context, attrs, 0)
     constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr) {
         setWillNotDraw(false)
+    }
 
+    private fun init() {
         paint = Paint().apply {
-            color = ContextCompat.getColor(context, backgroundColorRes)
-            style = Paint.Style.FILL
-            flags = Paint.ANTI_ALIAS_FLAG
+            shader = gradient
+            isAntiAlias = true
         }
         overlayPaint = Paint().apply {
             color = ContextCompat.getColor(context, R.color.grey)
@@ -87,6 +98,7 @@ class WaveSideBar : FrameLayout {
 
     override fun onDraw(canvas: Canvas?) {
         reset()
+
         drawOverlay(canvas)
 
         if (isExpanded) {
@@ -150,6 +162,8 @@ class WaveSideBar : FrameLayout {
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (isBusy) return true
+
         currentX = event.x
         currentY = event.y
 
@@ -169,15 +183,17 @@ class WaveSideBar : FrameLayout {
             ACTION_UP -> {
                 if (!event.isClick(startX, startY)) {
                     if (!isExpanded && event.isPulled(startX, pullOffset)) {
-                        startExpandAnimation()
+                        expand()
                     } else if (event.isPulledBack(startX, pullOffset)) {
-                        animateCollapsing()
+                        collapse()
+                    } else if (isExpanded) {
+                        bounce()
                     } else {
-                        animateTension()
+                        clearData()
                     }
                     invalidateNeeded = true
                 } else if (isExpanded) {
-                    animateCollapsing()
+                    collapse()
                 }
             }
         }
@@ -188,7 +204,34 @@ class WaveSideBar : FrameLayout {
         return true
     }
 
-    private fun startExpandAnimation() {
+    fun collapse() {
+        isBusy = true
+        hideContent()
+        ValueAnimator.ofFloat(sideBarWidth, 0f).apply {
+            duration = collapseAnimationDuration
+            addUpdateListener {
+                zeroX = animatedValue as Float
+            }
+        }.start()
+        ValueAnimator.ofFloat(sideBarWidth, 0f).apply {
+            duration = collapseAnimationDuration + 100
+            interpolator = BounceInterpolator()
+            addUpdateListener {
+                controlX = animatedValue as Float
+                invalidate()
+            }
+            addListener(object : OnAnimationFinishedListener {
+                override fun onAnimationEnd(animation: Animator?) {
+                    isExpanded = false
+                    clearData()
+                    isBusy = false
+                }
+            })
+        }.start()
+    }
+
+    fun expand() {
+        isBusy = true
         ValueAnimator.ofFloat(0f, sideBarWidth).apply {
             duration = expandAnimationDuration / 2
             addUpdateListener {
@@ -221,6 +264,22 @@ class WaveSideBar : FrameLayout {
                 controlX = animatedValue as Float
                 invalidate()
             }
+            addListener(object : OnAnimationFinishedListener {
+                override fun onAnimationEnd(animation: Animator?) {
+                    isBusy = false
+                }
+            })
+        }.start()
+    }
+
+    private fun bounce() {
+        ValueAnimator.ofFloat(controlX, sideBarWidth).apply {
+            duration = collapseAnimationDuration / 2
+            interpolator = SpringInterpolator()
+            addUpdateListener {
+                controlX = animatedValue as Float
+                invalidate()
+            }
         }.start()
     }
 
@@ -231,41 +290,6 @@ class WaveSideBar : FrameLayout {
                     duration = expandAnimationDuration
                     view?.visibility = View.VISIBLE
                 }.start()
-    }
-
-    private fun animateCollapsing() {
-        hideContent()
-        ValueAnimator.ofFloat(sideBarWidth, 0f).apply {
-            duration = collapseAnimationDuration
-            addUpdateListener {
-                zeroX = animatedValue as Float
-            }
-        }.start()
-        ValueAnimator.ofFloat(sideBarWidth, 0f).apply {
-            duration = collapseAnimationDuration + 100
-            interpolator = BounceInterpolator()
-            addUpdateListener {
-                controlX = animatedValue as Float
-                invalidate()
-            }
-            addListener(object : OnAnimationFinishedListener {
-                override fun onAnimationEnd(animation: Animator?) {
-                    isExpanded = false
-                    clearData()
-                }
-            })
-        }.start()
-    }
-
-    private fun animateTension() {
-        ValueAnimator.ofFloat(controlX, sideBarWidth).apply {
-            duration = collapseAnimationDuration / 2
-            interpolator = SpringInterpolator()
-            addUpdateListener {
-                controlX = animatedValue as Float
-                invalidate()
-            }
-        }.start()
     }
 
     private fun hideContent() {

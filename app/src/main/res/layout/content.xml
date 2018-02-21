@@ -1,20 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="300dp"
     android:layout_height="match_parent">
 
-    <android.support.v7.widget.RecyclerView
-        android:id="@+id/recyclerView"
-        android:layout_width="300dp"
-        android:layout_height="match_parent"
-        android:paddingBottom="60dp" />
-
-    <EditText
-        android:id="@+id/editText"
+    <android.support.design.widget.NavigationView
+        android:id="@+id/menu"
         android:layout_width="300dp"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:hint="Search"
-        android:padding="16dp" />
-
+        android:layout_gravity="center_vertical"
+        android:background="@android:color/transparent"
+        app:itemBackground="?attr/selectableItemBackground"
+        app:itemIconTint="@android:color/white"
+        app:itemTextColor="@android:color/white"
+        app:menu="@menu/menu" />
 </FrameLayout>
